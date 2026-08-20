@@ -1,0 +1,17 @@
+# Sauvegardes de données personnelles exportées depuis l'app (bouton "Exporter")
+sauvegarde-planning-pass*.json
+*.backup.json
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Éditeurs / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs éventuels
+*.log
