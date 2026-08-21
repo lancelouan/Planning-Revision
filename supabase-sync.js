@@ -1,3 +1,4 @@
+```javascript
 // ============================================================
 // Planning Révisions — Supabase
 // Authentification + synchronisation du planning
@@ -245,7 +246,7 @@ async function syncPlanningToSupabase() {
           .upsert(
             blocksData,
             {
-              onConflict: 'id'
+              onConflict: 'id,user_id'
             }
           );
 
@@ -271,7 +272,7 @@ async function syncPlanningToSupabase() {
           .upsert(
             matieresData,
             {
-              onConflict: 'id'
+              onConflict: 'id,user_id'
             }
           );
 
@@ -297,7 +298,7 @@ async function syncPlanningToSupabase() {
           .upsert(
             placementsData,
             {
-              onConflict: 'id'
+              onConflict: 'id,user_id'
             }
           );
 
@@ -683,3 +684,4 @@ window.addEventListener(
 
   }
 );
+```
