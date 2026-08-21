@@ -243,12 +243,7 @@ async function syncPlanningToSupabase() {
       } =
         await supabaseClient
           .from('blocks')
-          .upsert(
-            blocksData,
-            {
-              onConflict: 'id,user_id'
-            }
-          );
+          .upsert(blocksData);
 
       if (error) {
         throw error;
@@ -269,12 +264,7 @@ async function syncPlanningToSupabase() {
       } =
         await supabaseClient
           .from('matieres')
-          .upsert(
-            matieresData,
-            {
-              onConflict: 'id,user_id'
-            }
-          );
+          .upsert(matieresData);
 
       if (error) {
         throw error;
@@ -295,12 +285,7 @@ async function syncPlanningToSupabase() {
       } =
         await supabaseClient
           .from('placements')
-          .upsert(
-            placementsData,
-            {
-              onConflict: 'id,user_id'
-            }
-          );
+          .upsert(placementsData);
 
       if (error) {
         throw error;
