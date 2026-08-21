@@ -1,0 +1,10 @@
+{
+  "name": "Planning Révision",
+  "short_name": "Planning",
+  "start_url": "/Planning-Revision/",
+  "scope": "/Planning-Revision/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "description": "Planning personnel de révision"
+}
