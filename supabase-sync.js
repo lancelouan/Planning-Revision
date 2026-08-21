@@ -1,6 +1,6 @@
 // ============================================================
 // Planning Révisions — Supabase
-// Authentification
+// Authentification + synchronisation du planning
 // ============================================================
 
 const SUPABASE_URL =
@@ -10,6 +10,7 @@ const SUPABASE_PUBLISHABLE_KEY =
   'sb_publishable_X1_rdT7gsNbxhs4RJst7QQ_B1XuuclE';
 
 let supabaseClient = null;
+let supabaseSyncStarted = false;
 
 // ============================================================
 // Initialisation Supabase
@@ -76,7 +77,7 @@ async function initSupabase() {
 }
 
 // ============================================================
-// Récupérer l'utilisateur connecté
+// Utilisateur connecté
 // ============================================================
 
 async function getSupabaseUser() {
@@ -161,6 +162,394 @@ async function signOutSupabase() {
   if (error) {
     throw error;
   }
+
+  supabaseSyncStarted = false;
+}
+
+// ============================================================
+// Conversion des données vers Supabase
+// ============================================================
+
+function convertBlocksForSupabase(userId) {
+
+  return blocks.map(block => ({
+    id: block.id,
+    user_id: userId,
+    name: block.name,
+    color: block.color,
+    duration: block.duration ?? null,
+    variable: block.variable ?? false,
+    duration_options:
+      block.durationOptions ?? null
+  }));
+}
+
+function convertMatieresForSupabase(userId) {
+
+  return matieres.map(matiere => ({
+    id: matiere.id,
+    user_id: userId,
+    name: matiere.name,
+    color: matiere.color
+  }));
+}
+
+function convertPlacementsForSupabase(userId) {
+
+  return placements.map(placement => ({
+    id: placement.id,
+    user_id: userId,
+    type: placement.type,
+    ref_id: placement.refId ?? null,
+    day: placement.day,
+    start_min: placement.startMin,
+    dur_min: placement.durMin,
+    week: placement.week,
+    note: placement.note ?? null
+  }));
+}
+
+// ============================================================
+// Sauvegarde complète du planning
+// ============================================================
+
+async function syncPlanningToSupabase() {
+
+  if (!supabaseClient) {
+    return;
+  }
+
+  const user =
+    await getSupabaseUser();
+
+  if (!user) {
+    return;
+  }
+
+  try {
+
+    // --------------------------------------------------------
+    // Blocks
+    // --------------------------------------------------------
+
+    const blocksData =
+      convertBlocksForSupabase(user.id);
+
+    if (blocksData.length > 0) {
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from('blocks')
+          .upsert(
+            blocksData,
+            {
+              onConflict: 'id'
+            }
+          );
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    // --------------------------------------------------------
+    // Matières
+    // --------------------------------------------------------
+
+    const matieresData =
+      convertMatieresForSupabase(user.id);
+
+    if (matieresData.length > 0) {
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from('matieres')
+          .upsert(
+            matieresData,
+            {
+              onConflict: 'id'
+            }
+          );
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    // --------------------------------------------------------
+    // Placements
+    // --------------------------------------------------------
+
+    const placementsData =
+      convertPlacementsForSupabase(user.id);
+
+    if (placementsData.length > 0) {
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from('placements')
+          .upsert(
+            placementsData,
+            {
+              onConflict: 'id'
+            }
+          );
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    console.log(
+      '[Supabase] Planning synchronisé.'
+    );
+
+  } catch (error) {
+
+    console.error(
+      '[Supabase] Erreur de synchronisation :',
+      error
+    );
+  }
+}
+
+// ============================================================
+// Chargement depuis Supabase
+// ============================================================
+
+async function loadPlanningFromSupabase() {
+
+  if (!supabaseClient) {
+    return false;
+  }
+
+  const user =
+    await getSupabaseUser();
+
+  if (!user) {
+    return false;
+  }
+
+  try {
+
+    // --------------------------------------------------------
+    // Blocks
+    // --------------------------------------------------------
+
+    const {
+      data: blocksData,
+      error: blocksError
+    } =
+      await supabaseClient
+        .from('blocks')
+        .select('*')
+        .eq('user_id', user.id);
+
+    if (blocksError) {
+      throw blocksError;
+    }
+
+    // --------------------------------------------------------
+    // Matières
+    // --------------------------------------------------------
+
+    const {
+      data: matieresData,
+      error: matieresError
+    } =
+      await supabaseClient
+        .from('matieres')
+        .select('*')
+        .eq('user_id', user.id);
+
+    if (matieresError) {
+      throw matieresError;
+    }
+
+    // --------------------------------------------------------
+    // Placements
+    // --------------------------------------------------------
+
+    const {
+      data: placementsData,
+      error: placementsError
+    } =
+      await supabaseClient
+        .from('placements')
+        .select('*')
+        .eq('user_id', user.id);
+
+    if (placementsError) {
+      throw placementsError;
+    }
+
+    // --------------------------------------------------------
+    // Application des données
+    // --------------------------------------------------------
+
+    if (blocksData && blocksData.length > 0) {
+
+      blocks = blocksData.map(block => ({
+        id: block.id,
+        name: block.name,
+        color: block.color,
+        duration: block.duration,
+        variable: block.variable,
+        durationOptions:
+          block.duration_options || undefined
+      }));
+
+      persist(
+        'pr_blocks',
+        blocks
+      );
+    }
+
+    if (matieresData && matieresData.length > 0) {
+
+      matieres = matieresData.map(matiere => ({
+        id: matiere.id,
+        name: matiere.name,
+        color: matiere.color
+      }));
+
+      persist(
+        'pr_matieres',
+        matieres
+      );
+    }
+
+    if (placementsData) {
+
+      placements = placementsData.map(placement => ({
+        id: placement.id,
+        type: placement.type,
+        refId: placement.ref_id,
+        day: placement.day,
+        startMin: placement.start_min,
+        durMin: placement.dur_min,
+        week: placement.week,
+        note: placement.note
+      }));
+
+      persist(
+        'pr_placements',
+        placements
+      );
+    }
+
+    console.log(
+      '[Supabase] Planning chargé depuis Supabase.'
+    );
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      '[Supabase] Erreur de chargement :',
+      error
+    );
+
+    return false;
+  }
+}
+
+// ============================================================
+// Démarrage de la synchronisation
+// ============================================================
+
+async function startSupabaseSync() {
+
+  if (supabaseSyncStarted) {
+    return;
+  }
+
+  const user =
+    await getSupabaseUser();
+
+  if (!user) {
+    return;
+  }
+
+  try {
+
+    const {
+      data: existingPlacements,
+      error
+    } =
+      await supabaseClient
+        .from('placements')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    // --------------------------------------------------------
+    // Si Supabase possède déjà un planning,
+    // on le charge.
+    // --------------------------------------------------------
+
+    if (
+      existingPlacements &&
+      existingPlacements.length > 0
+    ) {
+
+      await loadPlanningFromSupabase();
+
+      if (typeof ensureSpecialBlocks === 'function') {
+        ensureSpecialBlocks();
+      }
+
+      if (typeof ensureDefaultMatieres === 'function') {
+        ensureDefaultMatieres();
+      }
+
+      if (typeof renderBlocks === 'function') {
+        renderBlocks();
+      }
+
+      if (typeof renderMatieres === 'function') {
+        renderMatieres();
+      }
+
+      if (typeof renderCalendar === 'function') {
+        renderCalendar();
+      }
+
+    }
+
+    // --------------------------------------------------------
+    // Sinon, on envoie le planning local vers Supabase.
+    // --------------------------------------------------------
+
+    else {
+
+      await syncPlanningToSupabase();
+    }
+
+    supabaseSyncStarted = true;
+
+    console.log(
+      '[Supabase] Synchronisation prête.'
+    );
+
+  } catch (error) {
+
+    console.error(
+      '[Supabase] Erreur au démarrage de la synchronisation :',
+      error
+    );
+  }
 }
 
 // ============================================================
@@ -188,6 +577,7 @@ async function setupSupabaseLogin() {
     !loginScreen ||
     !loginForm
   ) {
+
     console.warn(
       '[Supabase] Écran de connexion introuvable.'
     );
@@ -196,7 +586,7 @@ async function setupSupabaseLogin() {
   }
 
   // ----------------------------------------------------------
-  // Vérification de la session existante
+  // Session existante
   // ----------------------------------------------------------
 
   const user =
@@ -212,6 +602,8 @@ async function setupSupabaseLogin() {
       user.email
     );
 
+    await startSupabaseSync();
+
   } else {
 
     loginScreen.style.display =
@@ -223,7 +615,7 @@ async function setupSupabaseLogin() {
   }
 
   // ----------------------------------------------------------
-  // Formulaire de connexion
+  // Connexion
   // ----------------------------------------------------------
 
   loginForm.addEventListener(
@@ -261,6 +653,8 @@ async function setupSupabaseLogin() {
           '[Supabase] Connexion réussie.'
         );
 
+        await startSupabaseSync();
+
       } catch (error) {
 
         console.error(
@@ -286,5 +680,6 @@ window.addEventListener(
     await initSupabase();
 
     await setupSupabaseLogin();
+
   }
 );
