@@ -1,4 +1,3 @@
-```javascript
 // ============================================================
 // Planning Révisions — Supabase
 // Authentification + synchronisation du planning
@@ -669,4 +668,3 @@ window.addEventListener(
 
   }
 );
-```
