@@ -1081,7 +1081,9 @@ renderCalendar();
 renderTodoCal();
 renderBlocks();
 renderMatieres();
-renderAnnales();
+renderAnnales(
+  
+);
 </script>
 
 <script src="/Planning-Revision/planning-enhancements.js?v=1"></script>
@@ -1094,127 +1096,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
-
-<!-- ============================================================
-     Écran de connexion Supabase
-     ============================================================ -->
-
-<div
-  id="supabase-login"
-  style="
-    display:none;
-    position:fixed;
-    inset:0;
-    z-index:9999;
-    background:var(--bg);
-    color:var(--ink);
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-  "
->
-  <div
-    style="
-      width:100%;
-      max-width:380px;
-      background:var(--paper);
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:24px;
-      box-shadow:0 12px 40px rgba(0,0,0,.3);
-    "
-  >
-
-    <h1 style="margin:0 0 8px;">
-      Planning Révisions
-    </h1>
-
-    <p class="hint">
-      Connecte-toi pour accéder à ton planning.
-    </p>
-
-    <form id="supabase-login-form">
-
-      <label
-        for="supabase-email"
-        style="display:block;font-size:12px;margin-bottom:5px;"
-      >
-        Adresse e-mail
-      </label>
-
-      <input
-        id="supabase-email"
-        type="email"
-        autocomplete="email"
-        required
-        style="
-          display:block;
-          width:100%;
-          padding:10px;
-          margin-bottom:12px;
-          border:1px solid var(--line-strong);
-          border-radius:7px;
-          background:var(--paper);
-          color:var(--ink);
-          font:inherit;
-        "
-      >
-
-      <label
-        for="supabase-password"
-        style="display:block;font-size:12px;margin-bottom:5px;"
-      >
-        Mot de passe
-      </label>
-
-      <input
-        id="supabase-password"
-        type="password"
-        autocomplete="current-password"
-        required
-        style="
-          display:block;
-          width:100%;
-          padding:10px;
-          margin-bottom:14px;
-          border:1px solid var(--line-strong);
-          border-radius:7px;
-          background:var(--paper);
-          color:var(--ink);
-          font:inherit;
-        "
-      >
-
-      <button
-        type="submit"
-        style="
-          width:100%;
-          padding:10px;
-          border:1px solid var(--accent);
-          border-radius:8px;
-          background:var(--accent);
-          color:#08130F;
-          font:inherit;
-          font-weight:500;
-          cursor:pointer;
-        "
-      >
-        Se connecter
-      </button>
-
-      <p
-        id="supabase-login-message"
-        style="
-          margin:12px 0 0;
-          font-size:12px;
-          text-align:center;
-          color:var(--danger);
-        "
-      ></p>
-
-    </form>
-  </div>
-</div>
 
 </body>
 </html>
