@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planning-revision-v4';
+const CACHE_NAME = 'planning-revision-v5';
 
 const FILES_TO_CACHE = [
   '/Planning-Revision/',
