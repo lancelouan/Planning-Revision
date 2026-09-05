@@ -1,22 +1,10 @@
 {
-  "name": "Planning Révisions",
-  "short_name": "Planning",
+  "name": "Planning Révision",
+  "short_name": "Planning Révision",
   "start_url": "/Planning-Revision/",
   "scope": "/Planning-Revision/",
   "display": "standalone",
   "background_color": "#0A0A0A",
   "theme_color": "#0A0A0A",
-  "description": "Planning personnel de révision",
-  "icons": [
-    {
-      "src": "/Planning-Revision/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/Planning-Revision/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "lang": "fr"
 }
