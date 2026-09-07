@@ -218,6 +218,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
 .cal-block .n{font-weight:600;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cal-block .d{opacity:.8;font-size:8px;}
 .drop-target{background:var(--accent-soft)!important;}
+.cal-block-ghost{position:absolute;left:2px;right:2px;border-radius:9px;border:2px dashed var(--accent);background:var(--accent-soft);pointer-events:none;z-index:5;}
 
 .pop{position:fixed;z-index:200;background:var(--paper-solid);border:1px solid var(--line-strong);border-radius:16px;box-shadow:0 16px 40px rgba(60,45,35,.22);padding:12px;min-width:230px;max-width:min(340px,92vw);max-height:80vh;overflow-y:auto;}
 .pop h3{margin:0 0 8px;}
@@ -517,6 +518,8 @@ let settings = {...DEFAULT_SETTINGS};
 
 let currentWeekStart = getMonday(new Date());
 let draggedId = null;
+let dragGrabOffsetPx = 0;
+let dragGhostEl = null;
 let dragOrigin = null;
 let openSubjectIds = new Set();
 let timerSeconds = 25*60, timerRunning=false, timerInterval=null;
@@ -936,7 +939,7 @@ function bindSubjectEvents(){
 
   container.querySelectorAll('[data-subject-color]').forEach(inp=>{
     inp.addEventListener('click', e=>e.stopPropagation());
-    inp.addEventListener('input', ()=>{
+    inp.addEventListener('change', ()=>{
       getSubject(inp.dataset.subjectColor).color = inp.value;
       saveAll(); renderSubjects(); renderCalendar();
     });
@@ -1404,6 +1407,24 @@ function getPlacementInfo(p){
   return {title:'Élément', color:'#888'};
 }
 
+function computeDropMinutes(clientY, rect, durMin){
+  const rawY = (clientY - rect.top) - dragGrabOffsetPx;
+  let minutes = Math.round((rawY/PX_PER_MIN)/30)*30 + CAL_START_MIN;
+  return clamp(minutes, CAL_START_MIN, CAL_END_MIN-durMin);
+}
+function showDragGhost(dayBody, minutes, durMin){
+  if(!dragGhostEl){
+    dragGhostEl = document.createElement('div');
+    dragGhostEl.className = 'cal-block-ghost';
+  }
+  if(dragGhostEl.parentNode !== dayBody) dayBody.appendChild(dragGhostEl);
+  dragGhostEl.style.top = ((minutes-CAL_START_MIN)*PX_PER_MIN)+'px';
+  dragGhostEl.style.height = Math.max(14, durMin*PX_PER_MIN-1)+'px';
+}
+function removeDragGhost(){
+  if(dragGhostEl && dragGhostEl.parentNode) dragGhostEl.parentNode.removeChild(dragGhostEl);
+}
+
 function renderCalendar(){
   renderWeekLabel();
   renderTimeGutter();
@@ -1433,18 +1454,26 @@ function renderCalendar(){
       minutes = clamp(minutes, CAL_START_MIN, CAL_END_MIN-30);
       openAddPopover(e.clientX, e.clientY, day, minutes);
     });
-    body.addEventListener('dragover', e=>{ e.preventDefault(); body.classList.add('drop-target'); });
+    body.addEventListener('dragover', e=>{
+      e.preventDefault();
+      body.classList.add('drop-target');
+      if(!draggedId) return;
+      const dragPlacement = placements.find(p=>p.id===draggedId);
+      if(!dragPlacement) return;
+      const rect = body.getBoundingClientRect();
+      const minutes = computeDropMinutes(e.clientY, rect, dragPlacement.durMin);
+      showDragGhost(body, minutes, dragPlacement.durMin);
+    });
     body.addEventListener('dragleave', ()=>body.classList.remove('drop-target'));
     body.addEventListener('drop', e=>{
       e.preventDefault();
       body.classList.remove('drop-target');
+      removeDragGhost();
       if(!draggedId) return;
       const placement = placements.find(p=>p.id===draggedId);
       if(!placement) return;
       const rect = body.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      let minutes = Math.round((y/PX_PER_MIN)/30)*30 + CAL_START_MIN;
-      minutes = clamp(minutes, CAL_START_MIN, CAL_END_MIN-placement.durMin);
+      const minutes = computeDropMinutes(e.clientY, rect, placement.durMin);
       const newDate = addDays(currentWeekStart, day);
       placement.day = day;
       placement.week = wk;
@@ -1468,8 +1497,13 @@ function renderCalendar(){
       el.style.background = tint(info.color);
       el.style.borderLeft = `3px solid ${info.color}`;
       el.innerHTML = `<span class="n">${escapeHTML(info.title)}</span><span class="d">${formatDuration(p.durMin)}</span>`;
-      el.addEventListener('dragstart', ()=>{ draggedId=p.id; setTimeout(()=>el.classList.add('dragging'),0); });
-      el.addEventListener('dragend', ()=>{ el.classList.remove('dragging'); draggedId=null; });
+      el.addEventListener('dragstart', e=>{
+        draggedId=p.id;
+        const blockRect = el.getBoundingClientRect();
+        dragGrabOffsetPx = e.clientY - blockRect.top;
+        setTimeout(()=>el.classList.add('dragging'),0);
+      });
+      el.addEventListener('dragend', ()=>{ el.classList.remove('dragging'); draggedId=null; removeDragGhost(); });
       el.addEventListener('click', e=>{
         e.stopPropagation();
         openPlacementPopover(p, e.clientX, e.clientY);
@@ -1813,7 +1847,7 @@ function renderBlocks(){
     </div>
   `).join('');
   container.querySelectorAll('[data-block-color]').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
+    inp.addEventListener('change', ()=>{
       getBlockById(inp.dataset.blockColor).color = inp.value;
       saveAll(); renderBlocks(); renderCalendar();
     });
