@@ -1,4 +1,4 @@
-const CACHE = 'planning-revision-v4';
+const CACHE = 'planning-revision-v5';
 
 const ASSETS = [
   '/Planning-Revision/',
