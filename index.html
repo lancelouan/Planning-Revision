@@ -125,10 +125,11 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
 .course-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:9px 11px;background:var(--paper-soft);}
 .course-title{font-weight:500;font-size:12.5px;font-family:"Fraunces",serif;}
 .course-meta{font-size:10.5px;color:var(--ink-soft);margin-top:2px;}
+.rc-history-toggle{background:none;border:none;padding:0;margin-left:4px;font-size:10.5px;color:var(--accent);text-decoration:underline dotted;cursor:pointer;}
 .course-actions{display:flex;gap:3px;flex:none;}
 
 .rev-table-wrap{overflow-x:auto;}
-.rev-table{width:100%;border-collapse:separate;border-spacing:0 5px;min-width:640px;}
+.rev-table{width:100%;border-collapse:separate;border-spacing:0 5px;min-width:920px;}
 .rev-table th{font-size:9.5px;text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:2px 10px;letter-spacing:.04em;font-weight:600;}
 .rev-cell{background:var(--paper-soft);padding:7px 10px;vertical-align:top;min-width:82px;}
 .rev-cell:first-child{border-radius:10px 0 0 10px;}
@@ -262,7 +263,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
 .block-item .bname{flex:1;font-size:12px;font-weight:500;}
 
 @media(max-width:640px){
-  .rev-table{min-width:560px;}
+  .rev-table{min-width:820px;}
   .stats-cards{grid-template-columns:repeat(2,1fr);}
 }
 @media(max-width:420px){
@@ -303,7 +304,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
       <span class="chev">▾</span>
     </div>
     <div class="card-body">
-      <p class="hint">Chaque cours possède ses révisions J-0, J-1, J-3 et J-7 (+ J-5 si le cours est marqué difficile), plus jusqu'à 4 révisions libres.</p>
+      <p class="hint">Chaque cours possède ses révisions J-0, J-1, J-3, J-7, J-14, J-28 et J-56 (+ J-5 si le cours est marqué difficile), plus jusqu'à 4 révisions libres.</p>
       <div style="margin-bottom:8px;">
         <button class="btn primary small" id="addSubjectBtn">+ Ajouter une matière</button>
       </div>
@@ -471,7 +472,10 @@ const REV_TYPES = [
   {key:'j1',label:'J-1',offset:1,optional:false},
   {key:'j3',label:'J-3',offset:3,optional:false},
   {key:'j5',label:'J-5',offset:5,optional:true},
-  {key:'j7',label:'J-7',offset:7,optional:false}
+  {key:'j7',label:'J-7',offset:7,optional:false},
+  {key:'j14',label:'J-14',offset:14,optional:false},
+  {key:'j28',label:'J-28',offset:28,optional:false},
+  {key:'j56',label:'J-56',offset:56,optional:false}
 ];
 const FREE_KEYS = ['free1','free2','free3','free4'];
 const FREE_LABELS = {free1:'Libre 1',free2:'Libre 2',free3:'Libre 3',free4:'Libre 4'};
@@ -522,6 +526,7 @@ let dragGrabOffsetPx = 0;
 let dragGhostEl = null;
 let dragOrigin = null;
 let openSubjectIds = new Set();
+let expandedHistoryIds = new Set();
 let timerSeconds = 25*60, timerRunning=false, timerInterval=null;
 
 /* ============================================================
@@ -855,7 +860,19 @@ function renderSubjects(){
 
 function renderCourseBlock(course){
   ensureCourseRevisions(course);
-  const types = courseRevTypes(course);
+  const allTypes = courseRevTypes(course);
+  const entries = allTypes.map(t=>({t, rev:revisions.find(r=>r.courseId===course.id && r.type===t.key)}));
+  const doneEntries = entries.filter(x=>x.rev && x.rev.status==='done');
+  const lastDone = doneEntries.length
+    ? doneEntries.reduce((a,b)=> b.t.offset>a.t.offset ? b : a)
+    : null;
+  const hiddenWhenCollapsed = Math.max(0, doneEntries.length - (lastDone?1:0));
+  const isExpanded = expandedHistoryIds.has(course.id);
+  const showToggle = hiddenWhenCollapsed > 0;
+  const visible = (isExpanded || !showToggle)
+    ? entries
+    : entries.filter(x => !x.rev || x.rev.status!=='done' || (lastDone && x.t.key===lastDone.t.key));
+
   const freeRevs = FREE_KEYS.map(k=>revisions.find(r=>r.courseId===course.id && r.type===k)).filter(Boolean);
 
   return `
@@ -863,7 +880,10 @@ function renderCourseBlock(course){
       <div class="course-head">
         <div>
           <div class="course-title">${escapeHTML(course.name)}${course.j5Enabled?' <span style="font-size:9px;color:var(--warm);font-weight:500;">· J-5</span>':''}</div>
-          <div class="course-meta">Cours du ${formatDateShort(course.courseDate)}</div>
+          <div class="course-meta">
+            Cours du ${formatDateShort(course.courseDate)}
+            ${showToggle ? `<button class="rc-history-toggle" data-toggle-history="${course.id}">${isExpanded ? "Masquer l'historique" : `· ${hiddenWhenCollapsed} terminé${hiddenWhenCollapsed>1?'s':''} masqué${hiddenWhenCollapsed>1?'s':''}`}</button>` : ''}
+          </div>
         </div>
         <div class="course-actions">
           <button class="iconbtn" data-course-edit="${course.id}" title="Modifier">✎</button>
@@ -873,12 +893,12 @@ function renderCourseBlock(course){
       <div class="rev-table-wrap">
         <table class="rev-table">
           <thead><tr>
-            ${types.map(t=>`<th>${t.label}</th>`).join('')}
+            ${visible.map(x=>`<th>${x.t.label}${(!isExpanded && showToggle && lastDone && x.t.key===lastDone.t.key) ? ' ✓' : ''}</th>`).join('')}
             ${freeRevs.map(r=>`<th>${escapeHTML(r.label||FREE_LABELS[r.type])}</th>`).join('')}
             <th style="width:16px;"></th>
           </tr></thead>
           <tbody><tr>
-            ${types.map(t=>renderRevCell(revisions.find(r=>r.courseId===course.id && r.type===t.key))).join('')}
+            ${visible.map(x=>renderRevCell(x.rev)).join('')}
             ${freeRevs.map(r=>renderRevCell(r)).join('')}
             <td class="rev-cell">
               ${freeRevs.length<4 ? `<button class="iconbtn" data-add-free="${course.id}" title="Ajouter une révision libre">+</button>` : ''}
@@ -982,6 +1002,15 @@ function bindSubjectEvents(){
     });
   });
 
+  container.querySelectorAll('[data-toggle-history]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const id = btn.dataset.toggleHistory;
+      if(expandedHistoryIds.has(id)) expandedHistoryIds.delete(id); else expandedHistoryIds.add(id);
+      renderSubjects();
+    });
+  });
+
   container.querySelectorAll('[data-course-edit]').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
@@ -1025,10 +1054,15 @@ function bindSubjectEvents(){
     inp.addEventListener('change', e=>{
       e.stopPropagation();
       const rev = getRevisionById(inp.dataset.revDate);
-      if(rev.status==='done') rev.actualDate = inp.value; else rev.plannedDate = inp.value;
+      if(rev.status==='done'){
+        rev.actualDate = inp.value;
+        cascadeNextRevision(rev);
+      } else {
+        rev.plannedDate = inp.value;
+      }
       rev.dismissed = false;
       saveAll();
-      renderSuggestions(); renderUpcomingByDay();
+      renderSubjects(); renderSuggestions(); renderUpcomingByDay(); renderCalendar();
     });
   });
 
@@ -1143,6 +1177,7 @@ function cycleRevisionStatus(rev){
     rev.status='done';
     rev.actualDate = todayKey();
     rev.dismissed = false;
+    cascadeNextRevision(rev);
   } else if(rev.status==='done'){
     rev.status='replan';
     rev.dismissed = false;
@@ -1158,6 +1193,31 @@ function cycleRevisionStatus(rev){
 function syncPlacementForRevision(rev){
   const placement = placements.find(p=>p.revisionId===rev.id);
   if(placement) placement.completed = rev.status==='done';
+}
+
+/*
+  Report en cascade : quand un J fixe (J-0, J-1, J-3, J-5, J-7, J-14, J-28,
+  J-56 — pas les révisions libres) est réalisé à une date différente de sa
+  date prévue, le prochain J non encore réalisé du même cours est recalculé
+  à partir de cette date réelle, en conservant l'écart d'origine entre les
+  deux J. Exemple : J-3 prévu le 27, réalisé le 28 → J-7 (écart de 4 jours
+  avec J-3) passe du 31 au 01... (28 + 4 jours).
+*/
+function cascadeNextRevision(rev){
+  if(!rev.actualDate) return;
+  const currentType = REV_TYPES.find(t=>t.key===rev.type);
+  if(!currentType) return; // révision libre : pas de cascade
+
+  const next = revisions
+    .filter(r=>r.courseId===rev.courseId && r.status!=='done')
+    .map(r=>({r, type:REV_TYPES.find(t=>t.key===r.type)}))
+    .filter(x=>x.type && x.type.offset > currentType.offset)
+    .sort((a,b)=>a.type.offset-b.type.offset)[0];
+
+  if(!next) return;
+  const gap = next.type.offset - currentType.offset;
+  next.r.plannedDate = isoDate(addDays(parseDate(rev.actualDate), gap));
+  next.r.dismissed = false;
 }
 
 /* ============================================================
@@ -1221,6 +1281,7 @@ function renderSuggestions(){
     btn.addEventListener('click', ()=>{
       const rev = getRevisionById(btn.dataset.suggestDone);
       rev.status='done'; rev.actualDate=todayKey(); rev.dismissed=false;
+      cascadeNextRevision(rev);
       syncPlacementForRevision(rev);
       saveAll();
       renderSuggestions(); renderUpcomingByDay(); renderSubjects(); renderStats(); renderCalendar();
@@ -1715,7 +1776,11 @@ function openPlacementPopover(p, x, y){
     p.completed = !p.completed;
     if(p.type==='revision'){
       const rev = getRevisionById(p.revisionId);
-      if(rev){ rev.status = p.completed?'done':'todo'; rev.actualDate = p.completed?todayKey():''; }
+      if(rev){
+        rev.status = p.completed?'done':'todo';
+        rev.actualDate = p.completed?todayKey():'';
+        if(p.completed) cascadeNextRevision(rev);
+      }
     }
     saveAll();
     closePopovers();
