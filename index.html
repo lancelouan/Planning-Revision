@@ -815,6 +815,7 @@ function ensureCourseRevisions(course){
 }
 
 function renderSubjects(){
+  if(autoBumpLateRevisions()) saveAll();
   const container = document.getElementById('subjectList');
   if(!subjects.length){
     container.innerHTML = `<div class="empty">Ajoute une matière pour commencer.</div>`;
@@ -1059,6 +1060,7 @@ function bindSubjectEvents(){
         cascadeNextRevision(rev);
       } else {
         rev.plannedDate = inp.value;
+        propagateFromPlanned(rev);
       }
       rev.dismissed = false;
       saveAll();
@@ -1082,6 +1084,7 @@ function bindSubjectEvents(){
       rev.plannedDate = dateInput.value;
       rev.status = 'todo';
       rev.dismissed = false;
+      propagateFromPlanned(rev);
       syncPlacementForRevision(rev);
       saveAll();
       renderSubjects(); renderSuggestions(); renderUpcomingByDay(); renderCalendar();
@@ -1196,28 +1199,90 @@ function syncPlacementForRevision(rev){
 }
 
 /*
+  Propage une date d'ancrage à travers toute la chaîne des J suivants
+  (offset strictement supérieur à fromOffset) d'un cours, chacun s'appuyant
+  sur le précédent en conservant les écarts d'origine entre eux. Un J déjà
+  réalisé plus loin dans la chaîne n'est jamais modifié : il devient au
+  contraire le nouveau point d'ancrage pour la suite.
+*/
+function propagateChain(courseId, fromOffset, anchorDateStr){
+  const chain = revisions
+    .filter(r=>r.courseId===courseId)
+    .map(r=>({r, type:REV_TYPES.find(t=>t.key===r.type)}))
+    .filter(x=>x.type && x.type.offset > fromOffset)
+    .sort((a,b)=>a.type.offset-b.type.offset);
+
+  let anchorDate = anchorDateStr;
+  let anchorOffset = fromOffset;
+
+  chain.forEach(x=>{
+    if(x.r.status==='done'){
+      anchorDate = x.r.actualDate || anchorDate;
+      anchorOffset = x.type.offset;
+      return;
+    }
+    const gap = x.type.offset - anchorOffset;
+    x.r.plannedDate = isoDate(addDays(parseDate(anchorDate), gap));
+    x.r.dismissed = false;
+    anchorDate = x.r.plannedDate;
+    anchorOffset = x.type.offset;
+  });
+}
+
+/*
   Report en cascade : quand un J fixe (J-0, J-1, J-3, J-5, J-7, J-14, J-28,
   J-56 — pas les révisions libres) est réalisé à une date différente de sa
-  date prévue, le prochain J non encore réalisé du même cours est recalculé
-  à partir de cette date réelle, en conservant l'écart d'origine entre les
-  deux J. Exemple : J-3 prévu le 27, réalisé le 28 → J-7 (écart de 4 jours
-  avec J-3) passe du 31 au 01... (28 + 4 jours).
+  date prévue, toute la chaîne des J suivants pas encore réalisés est
+  recalculée à partir de cette date réelle (voir propagateChain).
 */
 function cascadeNextRevision(rev){
   if(!rev.actualDate) return;
   const currentType = REV_TYPES.find(t=>t.key===rev.type);
   if(!currentType) return; // révision libre : pas de cascade
+  propagateChain(rev.courseId, currentType.offset, rev.actualDate);
+}
 
-  const next = revisions
-    .filter(r=>r.courseId===rev.courseId && r.status!=='done')
-    .map(r=>({r, type:REV_TYPES.find(t=>t.key===r.type)}))
-    .filter(x=>x.type && x.type.offset > currentType.offset)
-    .sort((a,b)=>a.type.offset-b.type.offset)[0];
+/*
+  Variante utilisée quand on ajuste manuellement la date PRÉVUE d'un J pas
+  encore réalisé (retard rattrapé "à la main") : la suite de la chaîne
+  suit alors ce nouveau point de départ, exactement comme pour un J
+  marqué terminé.
+*/
+function propagateFromPlanned(rev){
+  const type = REV_TYPES.find(t=>t.key===rev.type);
+  if(!type || !rev.plannedDate) return; // révision libre : pas de cascade
+  propagateChain(rev.courseId, type.offset, rev.plannedDate);
+}
 
-  if(!next) return;
-  const gap = next.type.offset - currentType.offset;
-  next.r.plannedDate = isoDate(addDays(parseDate(rev.actualDate), gap));
-  next.r.dismissed = false;
+/*
+  Chaque jour, le prochain J à faire de chaque cours (le plus proche, pas
+  encore réalisé) est ramené à la date du jour dès que sa date prévue est
+  dépassée, pour qu'il soit immédiatement visible comme "à faire
+  maintenant". La suite de la chaîne est alors recalculée à partir de cette
+  nouvelle date pour rester cohérente. Les J au statut "à replanifier" ne
+  sont pas concernés : ils suivent leur propre parcours de replanification.
+*/
+function autoBumpLateRevisions(){
+  let changed = false;
+  const today = todayKey();
+
+  courses.forEach(course=>{
+    const types = courseRevTypes(course);
+    const next = types
+      .map(t=>({t, rev:revisions.find(r=>r.courseId===course.id && r.type===t.key)}))
+      .filter(x=>x.rev && x.rev.status==='todo')
+      .sort((a,b)=>a.t.offset-b.t.offset)[0];
+
+    if(!next) return;
+    if(next.rev.plannedDate && next.rev.plannedDate < today){
+      next.rev.plannedDate = today;
+      next.rev.dismissed = false;
+      changed = true;
+      propagateChain(course.id, next.t.offset, today);
+    }
+  });
+
+  return changed;
 }
 
 /* ============================================================
@@ -1265,6 +1330,7 @@ function renderSuggestions(){
       const dateInput = container.querySelector(`[data-suggest-date="${rev.id}"]`);
       rev.plannedDate = dateInput.value;
       rev.dismissed = false;
+      propagateFromPlanned(rev);
       saveAll();
       renderSuggestions(); renderUpcomingByDay(); renderSubjects(); renderCalendar();
     });
