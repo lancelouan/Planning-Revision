@@ -101,7 +101,9 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
 .theme-dot.active{box-shadow:0 0 0 2px var(--paper-solid), 0 0 0 4px var(--accent);}
 
 /* ---------- greeting ---------- */
-.greeting-card{display:flex;align-items:center;gap:14px;}
+.greeting-card{display:flex;flex-direction:column;gap:10px;}
+.greeting-top{display:flex;align-items:center;gap:14px;}
+
 .greeting-text{flex:1;min-width:0;}
 .greeting-text h1{margin-bottom:4px;}
 .quote-text{font-family:"Fraunces",serif;font-style:italic;font-size:13px;color:var(--ink-soft);line-height:1.4;}
@@ -203,7 +205,8 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
 .cal-days{display:flex;flex:1;min-width:0;border-radius:0 16px 16px 0;overflow:hidden;}
 .day-col{flex:1;min-width:0;border-left:1px solid var(--line);}
 .day-col:first-child{border-left:none;}
-.day-header{height:30px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:4px;border-bottom:1px solid var(--line-strong);font-size:9px;color:var(--ink-soft);background:var(--paper-solid);white-space:nowrap;overflow:hidden;padding:0 1px;font-style:italic;}
+.day-header{height:30px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:4px;border-bottom:1px solid var(--line-strong);font-size:9px;color:var(--ink-soft);background:var(--paper-solid);white-space:nowrap;overflow:hidden;padding:0 1px;font-style:italic;position:relative;}
+.day-header.clickable{cursor:pointer;}
 .day-header .dnum{font-family:"Fraunces",serif;font-style:normal;font-weight:600;font-size:11.5px;color:var(--ink);}
 .day-header.today{color:var(--accent);background:var(--accent-soft);}
 .day-header.today .dnum{color:var(--accent);}
@@ -212,6 +215,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
     repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 30px);
 }
 .cal-block{position:absolute;left:2px;right:2px;border-radius:9px;padding:2px 5px;overflow:hidden;cursor:grab;user-select:none;display:flex;flex-direction:column;justify-content:center;font-size:8.5px;border:1px solid rgba(70,55,42,.08);box-shadow:0 2px 8px rgba(70,55,42,.14);z-index:2;transition:box-shadow .15s ease, transform .15s ease;}
+.note-dot{position:absolute;top:1px;right:3px;font-size:9px;line-height:1;color:var(--warm);text-shadow:0 0 2px var(--paper-solid);pointer-events:none;}
 .cal-block:hover{box-shadow:0 4px 14px rgba(70,55,42,.22);transform:translateY(-1px);}
 .cal-block:active{cursor:grabbing;}
 .cal-block.dragging{opacity:.35;box-shadow:none;transform:none;}
@@ -256,6 +260,21 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
 .pomo-actions{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;}
 
 /* ---------- settings ---------- */
+/* ---------- habitudes ---------- */
+.habit-table{border-collapse:separate;border-spacing:0 5px;}
+.habit-table th{font-size:9px;text-transform:uppercase;color:var(--ink-soft);padding:2px 3px;font-weight:600;text-align:center;letter-spacing:.03em;line-height:1.3;}
+.habit-table th:first-child{text-align:left;min-width:170px;padding:2px 6px;}
+.habit-cell{background:var(--paper-soft);padding:6px 3px;text-align:center;vertical-align:middle;}
+.habit-cell:first-child{border-radius:10px 0 0 10px;text-align:left;min-width:170px;padding:7px 10px;}
+.habit-cell:last-child{border-radius:0 10px 10px 0;}
+.habit-today{background:var(--accent-soft)!important;}
+.habit-name-inner{display:flex;align-items:center;gap:4px;}
+.habit-name{flex:1;font-size:12px;font-weight:500;min-width:0;word-break:break-word;}
+.habit-check{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line-strong);background:var(--paper-solid);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--on-accent);font-size:9px;padding:0;}
+.habit-check.done{background:var(--accent);border-color:var(--accent);}
+.habit-add-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+.habit-add-row input{flex:1;min-width:160px;}
+
 .settings-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;}
 .settings-row:last-child{border-bottom:none;}
 .settings-row label{font-size:12.5px;flex:1;min-width:140px;}
@@ -290,11 +309,13 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
   </div>
 
   <div class="card greeting-card">
-    <div class="greeting-text">
-      <h1 id="greetingTitle" style="font-size:16px;"></h1>
-      <div class="quote-text" id="quoteText"></div>
+    <div class="greeting-top">
+      <div class="greeting-text">
+        <h1 id="greetingTitle" style="font-size:16px;"></h1>
+        <div class="quote-text" id="quoteText"></div>
+      </div>
+      <button class="iconbtn" id="quoteRefresh" title="Nouvelle citation">↻</button>
     </div>
-    <button class="iconbtn" id="quoteRefresh" title="Nouvelle citation">↻</button>
   </div>
 
   <!-- SUIVI COURS + REVISIONS -->
@@ -391,6 +412,30 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
     </div>
   </div>
 
+  <!-- HABITUDES -->
+  <div class="card" id="habitsCard">
+    <div class="card-head" data-toggle-card>
+      <h2>Habitudes quotidiennes</h2>
+      <span class="chev">▾</span>
+    </div>
+    <div class="card-body">
+      <p class="hint">Suis tes objectifs jour par jour sur le mois — ajoute tes propres lignes.</p>
+      <div class="week-nav">
+        <button class="navbtn" id="prevMonthHabits">‹</button>
+        <div class="week-label" id="monthLabelHabits"></div>
+        <button class="navbtn" id="nextMonthHabits">›</button>
+        <button class="today-btn" id="todayBtnHabits">Ce mois</button>
+      </div>
+      <div class="card-scroll">
+        <table class="habit-table" id="habitTable"></table>
+      </div>
+      <div class="habit-add-row">
+        <input type="text" id="newHabitName" placeholder="Nouvelle habitude (ex : Dormir avant minuit)">
+        <button class="btn small primary" id="addHabitBtn">+ Ajouter</button>
+      </div>
+    </div>
+  </div>
+
   <!-- POMODORO -->
   <div class="card" id="pomodoroCard">
     <div class="card-head" data-toggle-card>
@@ -458,7 +503,8 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
 const KEYS = {
   subjects:'pr4_subjects', courses:'pr4_courses', revisions:'pr4_revisions',
   placements:'pr4_placements', blocks:'pr4_blocks', todos:'pr4_todos',
-  manualHours:'pr4_manual_hours', settings:'pr4_settings'
+  manualHours:'pr4_manual_hours', settings:'pr4_settings',
+  personalNotes:'pr4_personal_notes', habits:'pr4_habits', habitChecks:'pr4_habit_checks'
 };
 
 const DAY_NAMES = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
@@ -519,6 +565,10 @@ const DEFAULT_SETTINGS = {theme:'noir', background:null, j5Enabled:false, pomodo
 let subjects=[], courses=[], revisions=[], placements=[], blocks=[], todos=[];
 let manualHours = {}; // {dateKey: minutes}
 let settings = {...DEFAULT_SETTINGS};
+let personalNotes = {}; // {dateKey: texte}
+let habits = []; // [{id, name}]
+let habitChecks = {}; // {habitId: {dateKey: true}}
+let habitsMonthStart = getMonthStart(new Date());
 
 let currentWeekStart = getMonday(new Date());
 let draggedId = null;
@@ -538,6 +588,9 @@ function loadJSON(key,fallback){ try{ const raw=localStorage.getItem(key); retur
 function escapeHTML(v){ return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 function getMonday(d){ const r=new Date(d); const day=(r.getDay()+6)%7; r.setDate(r.getDate()-day); r.setHours(12,0,0,0); return r; }
 function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function getMonthStart(d){ return new Date(d.getFullYear(), d.getMonth(), 1, 12,0,0,0); }
+function addMonths(d,n){ return new Date(d.getFullYear(), d.getMonth()+n, 1, 12,0,0,0); }
+function daysInMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); }
 function isoDate(d){ const dt=new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; }
 function parseDate(v){ if(!v) return null; const d=new Date(v+'T12:00:00'); return Number.isNaN(d.getTime())?null:d; }
 function todayKey(){ return isoDate(new Date()); }
@@ -555,6 +608,7 @@ function saveAll(){
   save(KEYS.subjects,subjects); save(KEYS.courses,courses); save(KEYS.revisions,revisions);
   save(KEYS.placements,placements); save(KEYS.blocks,blocks); save(KEYS.todos,todos);
   save(KEYS.manualHours,manualHours); save(KEYS.settings,settings);
+  save(KEYS.personalNotes,personalNotes); save(KEYS.habits,habits); save(KEYS.habitChecks,habitChecks);
 }
 
 /* ============================================================
@@ -669,6 +723,9 @@ function loadData(){
   todos = loadJSON(KEYS.todos, todos);
   manualHours = loadJSON(KEYS.manualHours, {});
   settings = {...DEFAULT_SETTINGS, ...loadJSON(KEYS.settings, settings)};
+  personalNotes = loadJSON(KEYS.personalNotes, {});
+  habits = loadJSON(KEYS.habits, []);
+  habitChecks = loadJSON(KEYS.habitChecks, {});
 }
 
 /* ============================================================
@@ -797,6 +854,39 @@ function renderQuote(){
   do{ idx=Math.floor(Math.random()*QUOTES.length); }while(idx===lastQuoteIndex && QUOTES.length>1);
   lastQuoteIndex=idx;
   document.getElementById('quoteText').textContent = `« ${QUOTES[idx]} »`;
+}
+
+/* ============================================================
+   MOTS PERSONNELS PAR JOUR
+   Accessibles directement sur l'en-tête de chaque jour dans le planning
+   (jour actuel ou jours à venir/passés), avec le même système de point
+   indicateur que pour les notes des blocs.
+============================================================ */
+function showPersonalNotePopover(dateKey, x, y){
+  const pop = createPopover();
+  const current = personalNotes[dateKey] || '';
+  const isToday = dateKey===todayKey();
+  const title = isToday ? "Ton mot pour aujourd'hui" : `Ton mot pour le ${formatDateShort(dateKey)}`;
+  pop.innerHTML = `
+    <h3>${title}</h3>
+    <div class="pop-field">
+      <textarea id="personalNoteInput" rows="3" placeholder="Écris-toi un mot d'encouragement pour ce jour-là...">${escapeHTML(current)}</textarea>
+    </div>
+    <div class="pop-actions">
+      <button class="btn primary" id="personalNoteSave">Enregistrer</button>
+    </div>
+    <button class="pop-close" data-keep-pop>Fermer</button>
+  `;
+  positionPopover(pop,x,y);
+  pop.querySelector('#personalNoteSave').addEventListener('click', ()=>{
+    const text = document.getElementById('personalNoteInput').value.trim();
+    if(text) personalNotes[dateKey] = text;
+    else delete personalNotes[dateKey];
+    save(KEYS.personalNotes, personalNotes);
+    closePopovers();
+    renderCalendar();
+  });
+  pop.querySelector('.pop-close').addEventListener('click', closePopovers);
 }
 
 /* ============================================================
@@ -1488,6 +1578,107 @@ function renderTodos(){
 }
 
 /* ============================================================
+   HABITUDES QUOTIDIENNES
+============================================================ */
+function renderHabits(){
+  const label = `${MONTHS[habitsMonthStart.getMonth()]} ${habitsMonthStart.getFullYear()}`;
+  document.getElementById('monthLabelHabits').textContent = label.charAt(0).toUpperCase()+label.slice(1);
+
+  const table = document.getElementById('habitTable');
+  const nbDays = daysInMonth(habitsMonthStart);
+  const days = [];
+  for(let i=0;i<nbDays;i++) days.push(new Date(habitsMonthStart.getFullYear(), habitsMonthStart.getMonth(), i+1, 12,0,0,0));
+  const today = todayKey();
+
+  if(!habits.length){
+    table.innerHTML = `<tr><td class="empty">Ajoute ta première habitude ci-dessous.</td></tr>`;
+    return;
+  }
+
+  const thead = `<thead><tr><th>Habitude</th>${days.map(d=>{
+    const isToday = isoDate(d)===today;
+    return `<th class="${isToday?'habit-today':''}" style="width:24px">${d.getDate()}</th>`;
+  }).join('')}</tr></thead>`;
+
+  const rows = habits.map(h=>{
+    const cells = days.map(d=>{
+      const key = isoDate(d);
+      const done = !!(habitChecks[h.id] && habitChecks[h.id][key]);
+      const isToday = key===today;
+      return `<td class="habit-cell ${isToday?'habit-today':''}" style="width:24px"><button class="habit-check ${done?'done':''}" data-habit-check="${h.id}" data-date="${key}">${done?'✓':''}</button></td>`;
+    }).join('');
+    return `
+      <tr>
+        <td class="habit-cell habit-name-cell">
+          <div class="habit-name-inner">
+            <span class="habit-name">${escapeHTML(h.name)}</span>
+            <button class="iconbtn" data-habit-edit="${h.id}" title="Modifier">✎</button>
+            <button class="iconbtn iconbtn-red" data-habit-delete="${h.id}" title="Supprimer">🗑</button>
+          </div>
+        </td>
+        ${cells}
+      </tr>
+    `;
+  }).join('');
+
+  table.innerHTML = thead + `<tbody>${rows}</tbody>`;
+
+  table.querySelectorAll('[data-habit-check]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.habitCheck;
+      const date = btn.dataset.date;
+      if(!habitChecks[id]) habitChecks[id] = {};
+      if(habitChecks[id][date]) delete habitChecks[id][date];
+      else habitChecks[id][date] = true;
+      save(KEYS.habitChecks, habitChecks);
+      renderHabits();
+    });
+  });
+  table.querySelectorAll('[data-habit-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const h = habits.find(x=>x.id===btn.dataset.habitEdit);
+      showPromptDialog({title:"Modifier l'habitude", label:'Nom', value:h.name}, v=>{
+        const trimmed = v.trim();
+        if(trimmed) h.name = trimmed;
+        save(KEYS.habits, habits);
+        renderHabits();
+      });
+    });
+  });
+  table.querySelectorAll('[data-habit-delete]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.habitDelete;
+      const h = habits.find(x=>x.id===id);
+      showConfirmDialog(`Supprimer l'habitude "${h.name}" ?`, ()=>{
+        habits = habits.filter(x=>x.id!==id);
+        delete habitChecks[id];
+        save(KEYS.habits, habits); save(KEYS.habitChecks, habitChecks);
+        renderHabits();
+      });
+    });
+  });
+}
+
+function bindHabits(){
+  const addBtn = document.getElementById('addHabitBtn');
+  const input = document.getElementById('newHabitName');
+  const addHabit = ()=>{
+    const name = input.value.trim();
+    if(!name) return;
+    habits.push({id:uid('habit'), name});
+    input.value='';
+    save(KEYS.habits, habits);
+    renderHabits();
+  };
+  addBtn.addEventListener('click', addHabit);
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') addHabit(); });
+
+  document.getElementById('prevMonthHabits').addEventListener('click', ()=>{ habitsMonthStart=addMonths(habitsMonthStart,-1); renderHabits(); });
+  document.getElementById('nextMonthHabits').addEventListener('click', ()=>{ habitsMonthStart=addMonths(habitsMonthStart,1); renderHabits(); });
+  document.getElementById('todayBtnHabits').addEventListener('click', ()=>{ habitsMonthStart=getMonthStart(new Date()); renderHabits(); });
+}
+
+/* ============================================================
    CALENDRIER
 ============================================================ */
 function renderWeekLabel(){
@@ -1565,11 +1756,23 @@ function renderCalendar(){
     const isToday = isoDate(date)===today;
     const col = document.createElement('div');
     col.className='day-col'+(isToday?' today':'');
+    const dateKey = isoDate(date);
+    const hasPersonalNote = !!personalNotes[dateKey];
     col.innerHTML = `
-      <div class="day-header ${isToday?'today':''}"><span>${DAY_NAMES[day]}</span><span class="dnum">${date.getDate()}</span></div>
+      <div class="day-header ${isToday?'today':''} clickable" data-day-header="${dateKey}">
+        ${hasPersonalNote ? `<span class="note-dot" title="${escapeHTML(personalNotes[dateKey])}">★</span>` : ''}
+        <span>${DAY_NAMES[day]}</span><span class="dnum">${date.getDate()}</span>
+      </div>
       <div class="day-body" data-day="${day}" style="height:${CAL_HEIGHT}px;"></div>
     `;
     calDays.appendChild(col);
+
+    const header = col.querySelector('[data-day-header]');
+    header.addEventListener('click', e=>{
+      e.stopPropagation();
+      const rect = header.getBoundingClientRect();
+      showPersonalNotePopover(dateKey, rect.left, rect.bottom+4);
+    });
 
     const body = col.querySelector('.day-body');
     body.addEventListener('click', e=>{
@@ -1623,7 +1826,7 @@ function renderCalendar(){
       el.style.height = height+'px';
       el.style.background = tint(info.color);
       el.style.borderLeft = `3px solid ${info.color}`;
-      el.innerHTML = `<span class="n">${escapeHTML(info.title)}</span><span class="d">${formatDuration(p.durMin)}</span>`;
+      el.innerHTML = `${p.note ? `<span class="note-dot" title="${escapeHTML(p.note)}">★</span>` : ''}<span class="n">${escapeHTML(info.title)}</span><span class="d">${formatDuration(p.durMin)}</span>`;
       el.addEventListener('dragstart', e=>{
         draggedId=p.id;
         const blockRect = el.getBoundingClientRect();
@@ -2080,7 +2283,8 @@ function bindSettings(){
 function exportData(){
   const payload = {
     version:4, exportedAt:new Date().toISOString(),
-    subjects, courses, revisions, placements, blocks, todos, manualHours, settings
+    subjects, courses, revisions, placements, blocks, todos, manualHours, settings,
+    personalNotes, habits, habitChecks
   };
   const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -2113,6 +2317,9 @@ function handleImport(e){
       todos = Array.isArray(data.todos)?data.todos:[];
       manualHours = data.manualHours && typeof data.manualHours==='object' ? data.manualHours : {};
       settings = {...DEFAULT_SETTINGS, ...(data.settings||{})};
+      personalNotes = data.personalNotes && typeof data.personalNotes==='object' ? data.personalNotes : {};
+      habits = Array.isArray(data.habits)?data.habits:[];
+      habitChecks = data.habitChecks && typeof data.habitChecks==='object' ? data.habitChecks : {};
       saveAll();
       showAlertDialog('Sauvegarde importée.');
       setTimeout(()=>location.reload(), 600);
@@ -2145,6 +2352,7 @@ function init(){
 
   bindCollapsibles();
   bindTodoForm();
+  bindHabits();
   bindBlockForm();
   bindPomodoro();
   bindSettings();
@@ -2157,6 +2365,7 @@ function init(){
   renderSubjects();
   renderSuggestions(); renderUpcomingByDay();
   renderTodos();
+  renderHabits();
   renderCalendar();
   renderStats();
   renderBlocks();
