@@ -1635,7 +1635,8 @@ function renderHabits(){
     });
   });
   table.querySelectorAll('[data-habit-edit]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
       const h = habits.find(x=>x.id===btn.dataset.habitEdit);
       showPromptDialog({title:"Modifier l'habitude", label:'Nom', value:h.name}, v=>{
         const trimmed = v.trim();
@@ -1646,7 +1647,8 @@ function renderHabits(){
     });
   });
   table.querySelectorAll('[data-habit-delete]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
       const id = btn.dataset.habitDelete;
       const h = habits.find(x=>x.id===id);
       showConfirmDialog(`Supprimer l'habitude "${h.name}" ?`, ()=>{
