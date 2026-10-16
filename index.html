@@ -165,6 +165,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
 .day-group-head .dg-name{font-family:"Fraunces",serif;font-style:italic;font-weight:500;font-size:12.5px;color:var(--accent);}
 .day-group-head .dg-date{font-size:10.5px;color:var(--ink-soft);}
 .day-group-head .dg-count{margin-left:auto;font-size:10px;color:var(--ink-soft);background:var(--paper-soft);border-radius:999px;padding:1px 8px;}
+.dg-jhead{font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin:8px 0 1px 6px;}
 .dg-item{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:10px;}
 .dg-item:hover{background:var(--paper-soft);}
 .dg-dot{width:7px;height:7px;border-radius:50%;flex:none;}
@@ -215,7 +216,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
     repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 30px);
 }
 .cal-block{position:absolute;left:2px;right:2px;border-radius:9px;padding:2px 5px;overflow:hidden;cursor:grab;user-select:none;display:flex;flex-direction:column;justify-content:center;font-size:8.5px;border:1px solid rgba(70,55,42,.08);box-shadow:0 2px 8px rgba(70,55,42,.14);z-index:2;transition:box-shadow .15s ease, transform .15s ease;}
-.note-dot{position:absolute;top:1px;right:3px;font-size:9px;line-height:1;color:var(--warm);text-shadow:0 0 2px var(--paper-solid);pointer-events:none;}
+.note-dot{position:absolute;top:1px;right:3px;font-size:9px;line-height:1;color:var(--warm);text-shadow:0 0 2px var(--paper-solid);}
 .cal-block:hover{box-shadow:0 4px 14px rgba(70,55,42,.22);transform:translateY(-1px);}
 .cal-block:active{cursor:grabbing;}
 .cal-block.dragging{opacity:.35;box-shadow:none;transform:none;}
@@ -858,9 +859,9 @@ function renderQuote(){
 
 /* ============================================================
    MOTS PERSONNELS PAR JOUR
-   Accessibles directement sur l'en-tête de chaque jour dans le planning
-   (jour actuel ou jours à venir/passés), avec le même système de point
-   indicateur que pour les notes des blocs.
+   Accessibles en cliquant sur l'en-tête de chaque jour dans le planning
+   (jours passés, actuel ou à venir). Une étoile apparaît sur les jours
+   qui ont un mot enregistré.
 ============================================================ */
 function showPersonalNotePopover(dateKey, x, y){
   const pop = createPopover();
@@ -870,7 +871,7 @@ function showPersonalNotePopover(dateKey, x, y){
   pop.innerHTML = `
     <h3>${title}</h3>
     <div class="pop-field">
-      <textarea id="personalNoteInput" rows="3" placeholder="Écris-toi un mot d'encouragement pour ce jour-là...">${escapeHTML(current)}</textarea>
+      <textarea id="personalNoteInput" rows="4" placeholder="Écris-toi un mot d'encouragement pour ce jour-là...">${escapeHTML(current)}</textarea>
     </div>
     <div class="pop-actions">
       <button class="btn primary" id="personalNoteSave">Enregistrer</button>
@@ -1466,9 +1467,40 @@ function renderUpcomingByDay(){
     return;
   }
 
+  /* Tri dans chaque jour : d'abord par J (J-0, J-1, J-3… J-56), puis par matière
+     (dans l'ordre de ta liste de matières), puis par cours en ordre « naturel »
+     (Cours 4 avant Cours 6, et Cours 9 avant Cours 10). */
+  const subjectIdx = id => { const k = subjects.findIndex(s=>s.id===id); return k<0 ? 9999 : k; };
+  const jOffset = rev => { const t = REV_TYPES.find(t=>t.key===rev.type); return t ? t.offset : 9999; };
+  groups.forEach(g=>{
+    g.items.sort((a,b)=>
+      jOffset(a.rev) - jOffset(b.rev) ||
+      subjectIdx(a.course.subjectId) - subjectIdx(b.course.subjectId) ||
+      a.course.name.localeCompare(b.course.name, 'fr', {numeric:true, sensitivity:'base'})
+    );
+  });
+
   container.innerHTML = groups.map(g=>{
     const label = g.i===0 ? "Aujourd'hui" : g.i===1 ? "Demain" : DAY_NAMES[(g.date.getDay()+6)%7];
     const dateLabel = formatDateShort(g.key);
+    let lastJ = null;
+    const itemsHtml = g.items.map(({rev,course})=>{
+      const subject = getSubject(course.subjectId);
+      const jHead = rev.label !== lastJ ? `<div class="dg-jhead">${escapeHTML(rev.label)}</div>` : '';
+      lastJ = rev.label;
+      return `
+        ${jHead}
+        <div class="dg-item">
+          <span class="dg-dot" style="background:${subject?subject.color:'#888'}"></span>
+          <span class="dg-text">
+            <span class="dg-course">${escapeHTML(course.name)}</span>
+            <span class="dg-rev">${subject?escapeHTML(subject.name):''}</span>
+          </span>
+          <button class="dg-done" data-dg-done="${rev.id}" title="Marquer terminé">✓</button>
+          <button class="dg-done dg-remove" data-dg-remove="${rev.id}" title="Retirer de cette liste">✕</button>
+        </div>
+      `;
+    }).join('');
     return `
       <div class="day-group">
         <div class="day-group-head">
@@ -1476,20 +1508,7 @@ function renderUpcomingByDay(){
           <span class="dg-date">${dateLabel}</span>
           <span class="dg-count">${g.items.length}</span>
         </div>
-        ${g.items.map(({rev,course})=>{
-          const subject = getSubject(course.subjectId);
-          return `
-            <div class="dg-item">
-              <span class="dg-dot" style="background:${subject?subject.color:'#888'}"></span>
-              <span class="dg-text">
-                <span class="dg-course">${escapeHTML(course.name)}</span>
-                <span class="dg-rev">${escapeHTML(rev.label)}${subject?' · '+escapeHTML(subject.name):''}</span>
-              </span>
-              <button class="dg-done" data-dg-done="${rev.id}" title="Marquer terminé">✓</button>
-              <button class="dg-done dg-remove" data-dg-remove="${rev.id}" title="Retirer de cette liste">✕</button>
-            </div>
-          `;
-        }).join('')}
+        ${itemsHtml}
       </div>
     `;
   }).join('');
